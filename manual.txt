@@ -1,0 +1,27 @@
+mkdir -p /opt/webmanager
+cd /opt/webmanager
+
+# Criar o ambiente virtual (opcional, mas recomendado)
+python3 -m venv venv
+source venv/bin/activate
+
+# Instalar Django e DRF
+pip install django djangorestframework djangorestframework-simplejwt drf-yasg
+
+
+# Criar o projeto Django
+django-admin startproject core .
+
+# Criar a aplicação API
+python manage.py startapp api
+python manage.py startapp authentication
+python manage.py startapp services
+
+# Criar um diretório para logs (opcional)
+mkdir logs
+
+#
+sudo chown -R www-data:www-data /var/www/lexlam/static/
+sudo chown -R www-data:www-data /var/www/lexlam/media/
+sudo chmod -R 755 /var/www/lexlam/static/
+sudo chmod -R 755 /var/www/lexlam/media/
