@@ -1,0 +1,36 @@
+
+{% load i18n %}
+<td>
+    <div class="fw-bold text-primary">{{ script.name }}</div>
+    <div class="small text-muted text-truncate" style="max-width: 300px;" title="{{ script.script_path|escape }}">
+        {{ script.script_path|escape }}
+    </div>
+</td>
+<td>
+    {% if script.last_status == 'success' %}
+        <span class="badge bg-success bg-opacity-10 text-success rounded-pill"><i class="bi bi-check-circle-fill"></i> Sucesso</span>
+    {% elif script.last_status == 'error' %}
+        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill"><i class="bi bi-exclamation-triangle-fill"></i> Erro</span>
+    {% elif script.last_status == 'timeout' %}
+        <span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-hourglass-split"></i> Timeout</span>
+    {% else %}
+        <span class="badge bg-secondary rounded-pill">-</span>
+    {% endif %}
+</td>
+<td><small class="text-muted">{% if script.last_run_at %}{{ script.last_run_at|date:"d/m/Y H:i" }}{% else %}-{% endif %}</small></td>
+<td><small>{{ script.last_run_by.username|default:"-" }}</small></td>
+<td class="text-end">
+    <div class="btn-group">
+        <!-- O onclick abaixo chama a função JS do dashboard.html passando ID e Nome -->
+        <button class="btn btn-sm btn-primary" 
+                onclick="startRealtimeRun({{ script.id }}, '{{ script.name|escapejs }}')">
+            <i class="bi bi-play-fill"></i> Executar
+        </button>
+        {% if script.last_run_at %}
+        <button class="btn btn-sm btn-outline-secondary"
+                onclick="showLogs('{{ script.name|escapejs }}', '{{ script.last_stdout|escapejs|linebreaksbr }}', '{{ script.last_stderr|escapejs|linebreaksbr }}')">
+            <i class="bi bi-journal-code"></i> Logs Antigos
+        </button>
+        {% endif %}
+    </div>
+</td>

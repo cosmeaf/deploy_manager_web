@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gerenciador de Deploys</h2>
+    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+      <i class="bi bi-arrow-clockwise"></i> Atualizar
+    </button>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 30%">Script / Nome</th>
+            <th style="width: 15%">Último Status</th>
+            <th style="width: 20%">Última Execução</th>
+            <th style="width: 15%">Executado Por</th>
+            <th style="width: 20%" class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="scripts-table-body">
+          {% for script in scripts %}
+            <tr id="row-{{ script.id }}">
+              {% include "deploy/partials/_row.html" %}
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="text-center p-4">Nenhum script encontrado.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE TERMINAL (SCROLL CORRIGIDO E STDERR ESCONDIDO) -->
+<div class="modal fade" id="terminalModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dark">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title font-monospace">
+          <i class="bi bi-terminal-fill text-success"></i> 
+          <span id="termScriptName" class="text-info"></span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="closeTermBtn"></button>
+      </div>
+      
+      <div class="modal-body p-0 d-flex flex-column" style="height: 70vh; background-color: #121212;">
+        <div id="terminalOutput">
+            <div class="log-line log-system">Inicializando terminal...</div>
+        </div>
+      </div>
+      
+      <div class="modal-footer border-secondary bg-dark">
+        <span id="termStatus" class="me-auto text-secondary">Aguardando...</span>
+        
+        <div class="form-check form-switch me-3">
+            <!-- Checkbox para mostrar/ocultar STDERR e Docker logs -->
+            <input class="form-check-input" type="checkbox" id="toggleVerboseLogs">
+            <label class="form-check-label text-muted" for="toggleVerboseLogs" style="font-size: 0.8rem">
+                Mostrar Logs de Erro/Stderr
+            </label>
+        </div>
+        
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS E SCRIPTS -->
+<style>
+/* ESTILOS DO TERMINAL */
+.modal-body {
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#terminalOutput {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    background-color: #121212;
+    color: #e0e0e0;
+    padding: 15px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 70vh;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all; /* Quebra hashes longos */
+}
+
+.log-line { display: block; margin-bottom: 2px; }
+.log-success { color: #28a745; font-weight: bold; }
+.log-info { color: #17a2b8; }
+.log-error { color: #dc3545; font-weight: bold; }
+.log-stderr { color: #ffc107; }
+.log-docker { color: #6c757d; font-size: 0.8rem; }
+.log-system { color: #adb5bd; }
+
+/* Scrollbar */
+#terminalOutput::-webkit-scrollbar { width: 8px; }
+#terminalOutput::-webkit-scrollbar-track { background: #1e1e1e; }
+#terminalOutput::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  let terminalModal;
+  let eventSource = null;
+
+  document.addEventListener('DOMContentLoaded', function() {
+      terminalModal = new bootstrap.Modal(document.getElementById('terminalModal'));
+  });
+
+  function appendLogToTerminal(text) {
+      const outputEl = document.getElementById('terminalOutput');
+      const div = document.createElement('div');
+      
+      // Escapar HTML
+      let safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      safeText = safeText.replace(/\n$/, '');
+
+      // ==========================================
+      // ESCONDER STDERR POR PADRÃO (NOVO)
+      // ==========================================
+      if (safeText.includes('[STDERR]')) {
+          // Só mostra se o checkbox estiver marcado
+          const showVerbose = document.getElementById('toggleVerboseLogs').checked;
+          if (!showVerbose) return; 
+      }
+
+      let logClass = 'log-line';
+      
+      if (safeText.includes('[FIM_DA_EXECUCAO]')) logClass += ' log-success';
+      else if (safeText.includes('[OK]') && !safeText.includes('[STDERR]')) logClass += ' log-success';
+      else if (safeText.includes('[ERROR]') || safeText.includes('[ERRO INTERNO]')) logClass += ' log-error';
+      else if (safeText.includes('[TIMEOUT]')) logClass += ' log-error';
+      else if (safeText.includes('[STDERR]')) {
+          if (/#\d+ \[/.test(safeText) || safeText.includes('#0 building')) logClass += ' log-docker'; 
+          else logClass += ' log-stderr';
+      }
+      else if (safeText.includes('[*]')) logClass += ' log-info';
+      else logClass += ' log-default';
+
+      div.className = logClass;
+      div.innerHTML = safeText;
+      outputEl.appendChild(div);
+      outputEl.scrollTop = outputEl.scrollHeight;
+  }
+
+  function startRealtimeRun(scriptId, scriptName) {
+      document.getElementById('termScriptName').innerText = scriptName;
+      const outputEl = document.getElementById('terminalOutput');
+      outputEl.innerHTML = '';
+      
+      document.getElementById('termStatus').innerText = "Conectando e executando...";
+      document.getElementById('termStatus').className = "me-auto text-warning";
+      document.getElementById('closeTermBtn').disabled = true;
+      
+      // Mostra o checkbox
+      document.getElementById('toggleVerboseLogs').parentElement.style.display = 'block';
+      
+      terminalModal.show();
+
+      eventSource = new EventSource(`/stream/${scriptId}/`);
+
+      eventSource.onmessage = function(event) {
+          const data = event.data;
+          const lines = data.split('\n');
+          lines.forEach(line => {
+              if(line.trim() !== '') appendLogToTerminal(line);
+          });
+
+          if (data.includes('[FIM_DA_EXECUCAO]')) {
+              eventSource.close();
+              const statusText = data.includes('success') ? 'Execução Finalizada com Sucesso.' : 'Execução Finalizada com Erros.';
+              const statusClass = data.includes('success') ? 'text-success' : 'text-danger';
+              
+              document.getElementById('termStatus').innerText = statusText;
+              document.getElementById('termStatus').className = `me-auto ${statusClass}`;
+              document.getElementById('closeTermBtn').disabled = false;
+              fetchRowUpdate(scriptId);
+          }
+      };
+
+      eventSource.onerror = function() {
+          eventSource.close();
+          document.getElementById('termStatus').innerText = "Erro na conexão com o servidor.";
+          document.getElementById('termStatus').className = "me-auto text-danger";
+          document.getElementById('closeTermBtn').disabled = false;
+      };
+  }
+
+  // Listener para o novo checkbox
+  document.getElementById('toggleVerboseLogs').addEventListener('change', function(e) {
+      // Se marcou, mostra todas as linhas docker/stderr que estão invisíveis
+      if(e.target.checked) {
+          const hiddenLines = document.querySelectorAll('.log-docker, .log-stderr');
+          hiddenLines.forEach(line => line.style.display = 'block');
+      } else {
+          // Se desmarcou, esconde novamente
+          const hiddenLines = document.querySelectorAll('.log-docker, .log-stderr');
+          hiddenLines.forEach(line => line.style.display = 'none');
+      }
+  });
+
+  function showLogs(scriptName, stdout, stderr) {
+      document.getElementById('termScriptName').innerText = "Logs Antigos: " + scriptName;
+      const outputEl = document.getElementById('terminalOutput');
+      outputEl.innerHTML = '';
+      document.getElementById('termStatus').innerText = "Visualização Estática";
+      document.getElementById('termStatus').className = "me-auto text-info";
+      document.getElementById('closeTermBtn').disabled = false;
+      
+      // Esconde checkbox em modo estático
+      document.getElementById('toggleVerboseLogs').parentElement.style.display = 'none';
+
+      if (stdout) stdout.split('\n').forEach(line => { if(line) appendLogToTerminal(line); });
+      if (stderr) {
+          appendLogToTerminal("--------------------------------------------------");
+          stderr.split('\n').forEach(line => { if(line) appendLogToTerminal(line); });
+      }
+      if (!stdout && !stderr) appendLogToTerminal("Sem logs registrados.");
+      terminalModal.show();
+  }
+
+  function fetchRowUpdate(scriptId) {
+      fetch(`/run/${scriptId}/`)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            const newRow = doc.querySelector('tr');
+            const oldRow = document.getElementById(`row-${scriptId}`);
+            if(oldRow && newRow) oldRow.innerHTML = newRow.innerHTML;
+        });
+  }
+</script>
+{% endblock %}

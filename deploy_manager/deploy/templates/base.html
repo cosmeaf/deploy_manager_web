@@ -1,0 +1,233 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Infinita Ops</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- FontAwesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      min-height: 100vh;
+      background-color: #f4f6f9;
+    }
+
+    /* Layout */
+    .app-wrapper {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: #111827;
+      color: #fff;
+      transition: all 0.3s;
+    }
+
+    .sidebar .brand {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    .sidebar a {
+      color: rgba(255,255,255,0.75);
+      padding: 12px 18px;
+      display: block;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+    }
+
+    .sidebar a:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+    }
+
+    .sidebar .active {
+      background: rgba(13,110,253,0.15);
+      color: #fff;
+      border-left: 3px solid #0d6efd;
+    }
+
+    /* Content */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .page-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* Mobile */
+    @media (max-width: 991px) {
+      .sidebar {
+        position: fixed;
+        left: -260px;
+        top: 0;
+        height: 100%;
+        z-index: 1040;
+      }
+
+      .sidebar.show {
+        left: 0;
+      }
+
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1030;
+      }
+
+      .sidebar-overlay.show {
+        display: block;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 4px; }
+  </style>
+</head>
+
+<body>
+
+<div class="app-wrapper">
+
+  <!-- OVERLAY MOBILE -->
+  <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar d-flex flex-column">
+
+    <div class="p-3 border-bottom border-secondary">
+      <div class="d-flex align-items-center">
+        <i class="fa-solid fa-server fa-lg me-2 text-primary"></i>
+        <span class="brand">Infinita Ops</span>
+      </div>
+    </div>
+
+    <nav class="flex-grow-1">
+      <a href="{% url 'dashboard_home' %}"
+         class="{% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
+        <i class="fa-solid fa-gauge-high me-2"></i> Dashboard
+      </a>
+
+      <a href="{% url 'deploy_dashboard' %}"
+         class="{% if request.resolver_match.url_name == 'deploy_dashboard' %}active{% endif %}">
+        <i class="fa-solid fa-terminal me-2"></i> Deploys
+      </a>
+
+      <a href="{% url 'list_secrets' %}"
+         class="{% if request.resolver_match.url_name == 'list_secrets' %}active{% endif %}">
+        <i class="fa-solid fa-key me-2"></i> Variáveis de Ambiente
+      </a>
+    </nav>
+
+    <div class="p-3 border-top border-secondary">
+      <div class="dropdown">
+        <a href="#" class="text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
+          <i class="fa-solid fa-user-circle me-2"></i>
+          {{ request.user.username }}
+        </a>
+        <ul class="dropdown-menu dropdown-menu-dark">
+          <li><a class="dropdown-item" href="{% url 'password_change' %}"><i class="fa-solid fa-lock me-2"></i> Trocar Senha</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'logout' %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="dropdown-item">
+                <i class="fa-solid fa-right-from-bracket me-2"></i> Sair
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+
+    <!-- TOPBAR -->
+    <div class="topbar px-3 py-2 d-flex align-items-center justify-content-between">
+
+      <div class="d-flex align-items-center">
+        <!-- Mobile toggle -->
+        <button class="btn btn-outline-secondary d-lg-none me-2" onclick="toggleSidebar()">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <span class="fw-semibold">Painel Operacional</span>
+      </div>
+
+      <div class="text-muted small">
+        <i class="fa-solid fa-clock me-1"></i>
+        {{ now|default:"" }}
+      </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <main class="page-content">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
+</div>
+
+<!-- Modal Terminal (mantido) -->
+<div class="modal fade" id="terminalModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title font-monospace">
+          <i class="fa-solid fa-terminal text-success me-2"></i>
+          Executando: <span id="termScriptName" class="text-info"></span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="closeTermBtn"></button>
+      </div>
+      <div class="modal-body p-0" style="height: 500px; overflow-y: auto;">
+        <pre id="terminalOutput" class="mb-0 p-3" style="font-size: 0.9rem; min-height: 100%;"></pre>
+      </div>
+      <div class="modal-footer border-secondary">
+        <span id="termStatus" class="me-auto text-warning">Executando...</span>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('show');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+</script>
+
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid px-4 animate-fade-in">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">Dashboard de Operações</h2>
+        <span class="text-muted fs-7">Visão geral da infraestrutura e deploys</span>
+    </div>
+    <div class="text-end">
+        <small class="text-muted d-block">Última atualização</small>
+        <span class="fw-bold text-dark">{% now "d/m/Y H:i" %}</span>
+    </div>
+  </div>
+
+  <!-- ============================= -->
+  <!-- 1. INFRAESTURA (Health Checks) -->
+  <!-- ============================= -->
+  <div class="row g-3 mb-4">
+    
+    <!-- Card Servidor -->
+    <div class="col-12 col-md-3 col-xl-3">
+      <div class="card shadow-sm h-100 border-start border-4 border-primary hover-lift">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase fs-7 fw-bold">Servidor</h6>
+              <h5 class="fw-bold mb-1">{{ hostname }}</h5>
+              <small class="text-muted">{{ server_ip }}</small>
+            </div>
+            <div class="icon-box bg-primary bg-opacity-10 text-primary p-2 rounded">
+                <i class="bi bi-server fs-5"></i>
+            </div>
+          </div>
+          <div class="mt-3 d-flex align-items-center">
+              {% if network_status == 'online' %}
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">
+                    <i class="bi bi-activity me-1"></i> {{ latency_ms }}ms
+                </span>
+              {% else %}
+                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill">
+                    <i class="bi bi-wifi-off me-1"></i> {{ network_status|upper }}
+                </span>
+              {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card CPU -->
+    <div class="col-12 col-md-3 col-xl-3">
+      <div class="card shadow-sm h-100 border-start border-4 hover-lift {% if cpu_percent > 80 %}border-danger{% elif cpu_percent > 50 %}border-warning{% else %}border-info{% endif %}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase fs-7 fw-bold">CPU Load</h6>
+              <h5 class="fw-bold mb-1">{{ cpu_percent }}%</h5>
+            </div>
+            <div class="icon-box bg-light text-secondary p-2 rounded">
+                <i class="bi bi-cpu fs-5"></i>
+            </div>
+          </div>
+          <div class="progress mt-3" style="height: 6px;">
+            <div class="progress-bar 
+                {% if cpu_percent > 80 %}bg-danger{% elif cpu_percent > 50 %}bg-warning{% else %}bg-info{% endif %}" 
+                style="width: {{ cpu_percent }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card Memória -->
+    <div class="col-12 col-md-3 col-xl-3">
+      <div class="card shadow-sm h-100 border-start border-4 hover-lift {% if mem_percent > 80 %}border-danger{% elif mem_percent > 50 %}border-warning{% else %}border-primary{% endif %}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase fs-7 fw-bold">Memória RAM</h6>
+              <h5 class="fw-bold mb-1">{{ mem_percent }}%</h5>
+            </div>
+            <div class="icon-box bg-light text-secondary p-2 rounded">
+                <i class="bi bi-memory fs-5"></i>
+            </div>
+          </div>
+          <div class="progress mt-3" style="height: 6px;">
+            <div class="progress-bar 
+                {% if mem_percent > 80 %}bg-danger{% elif mem_percent > 50 %}bg-warning{% else %}bg-primary{% endif %}" 
+                style="width: {{ mem_percent }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card Disco -->
+    <div class="col-12 col-md-3 col-xl-3">
+      <div class="card shadow-sm h-100 border-start border-4 hover-lift {% if disk_percent > 90 %}border-danger{% else %}border-secondary{% endif %}">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="text-muted text-uppercase fs-7 fw-bold">Armazenamento</h6>
+              <h5 class="fw-bold mb-1">{{ disk_percent }}%</h5>
+            </div>
+            <div class="icon-box bg-light text-secondary p-2 rounded">
+                <i class="bi bi-hdd fs-5"></i>
+            </div>
+          </div>
+          <div class="progress mt-3" style="height: 6px;">
+            <div class="progress-bar 
+                {% if disk_percent > 90 %}bg-danger{% else %}bg-secondary{% endif %}" 
+                style="width: {{ disk_percent }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================= -->
+  <!-- 2. KPIS DEPLOY (Resumo) -->
+  <!-- ============================= -->
+  <div class="row g-3 mb-4">
+
+    <div class="col-6 col-md-3">
+      <div class="card bg-white shadow-sm h-100 hover-lift">
+        <div class="card-body d-flex align-items-center">
+            <div class="flex-shrink-0">
+                <div class="icon-box bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+                    <i class="bi bi-collection fs-4"></i>
+                </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+                <h6 class="text-muted text-uppercase mb-1 fs-7 fw-bold">Total Projetos</h6>
+                <h2 class="fw-bold mb-0 text-dark">{{ total_scripts }}</h2>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <div class="card bg-white shadow-sm h-100 hover-lift">
+        <div class="card-body d-flex align-items-center">
+            <div class="flex-shrink-0">
+                <div class="icon-box bg-success bg-opacity-10 text-success p-3 rounded-circle">
+                    <i class="bi bi-check-circle fs-4"></i>
+                </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+                <h6 class="text-muted text-uppercase mb-1 fs-7 fw-bold">Deploys OK</h6>
+                <h2 class="fw-bold mb-0 text-success">{{ success_count }}</h2>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <div class="card bg-white shadow-sm h-100 hover-lift">
+        <div class="card-body d-flex align-items-center">
+            <div class="flex-shrink-0">
+                <div class="icon-box bg-danger bg-opacity-10 text-danger p-3 rounded-circle">
+                    <i class="bi bi-exclamation-circle fs-4"></i>
+                </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+                <h6 class="text-muted text-uppercase mb-1 fs-7 fw-bold">Com Erro</h6>
+                <h2 class="fw-bold mb-0 text-danger">{{ error_count }}</h2>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <div class="card bg-white shadow-sm h-100 hover-lift">
+        <div class="card-body">
+            <h6 class="text-muted text-uppercase mb-2 fs-7 fw-bold">Última Atividade</h6>
+            {% if last_deploy %}
+                <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-clock-history text-secondary me-2"></i>
+                    <span class="fw-bold text-dark small">{{ last_deploy.name }}</span>
+                </div>
+                <small class="text-muted d-block ps-4">{{ last_deploy.last_run_at|date:"d/m/Y H:i" }}</small>
+            {% else %}
+                <span class="text-muted small fst-italic">Nenhum deploy ainda</span>
+            {% endif %}
+            <!-- CORREÇÃO: Link direto (hardcoded) para evitar erro de reverse -->
+            <div class="mt-2">
+                <a href="{% url 'deploy_dashboard' %}" class="btn btn-sm btn-outline-secondary w-100">Ver Lista</a>
+            </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================= -->
+  <!-- 3. ANALITICA (Gráficos) -->
+  <!-- ============================= -->
+  <div class="row g-3 mb-4">
+
+    <!-- Donut Chart -->
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 border-0">
+        <div class="card-header bg-white border-bottom-0 py-3">
+            <h6 class="fw-bold mb-0 text-secondary">Taxa de Sucesso</h6>
+        </div>
+        <div class="card-body d-flex justify-content-center align-items-center position-relative" style="min-height: 250px;">
+            <div style="width: 180px; height: 180px;">
+                <canvas id="chartDonut"></canvas>
+            </div>
+            <!-- Texto Central do Donut -->
+            <div class="position-absolute text-center" style="top: 52%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+                <small class="text-muted d-block fs-7">Total</small>
+                <span class="fw-bold fs-4 text-dark">{{ success_count|add:error_count }}</span>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bar Chart -->
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 border-0">
+        <div class="card-header bg-white border-bottom-0 py-3">
+            <h6 class="fw-bold mb-0 text-secondary">Status dos Deploys</h6>
+        </div>
+        <div class="card-body" style="min-height: 250px;">
+          <canvas id="chartBar"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Line Chart (Tendência) -->
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 border-0">
+        <div class="card-header bg-white border-bottom-0 py-3">
+            <h6 class="fw-bold mb-0 text-secondary">Tendência (Últimos dias)</h6>
+        </div>
+        <div class="card-body" style="min-height: 250px;">
+          <canvas id="chartLine"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- CUSTOM CSS E SCRIPTS -->
+<style>
+    .hover-lift {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .hover-lift:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    .icon-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .fs-7 { font-size: 0.75rem; }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+
+  const success = {{ success_count }};
+  const error = {{ error_count }};
+  const total = success + error;
+  
+  // Cores Padronizadas (Bootstrap 5)
+  const colorSuccess = '#198754';
+  const colorError = '#dc3545';
+  const colorInfo = '#0dcaf0';
+
+  // =============================
+  // 1. Gráfico Donut
+  // =============================
+  new Chart(document.getElementById('chartDonut'), {
+    type: 'doughnut',
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '75%',
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } },
+        tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 10, cornerRadius: 4 }
+      }
+    },
+    data: {
+      labels: ['Sucesso', 'Erro'],
+      datasets: [{
+        data: [success, error],
+        backgroundColor: [colorSuccess, colorError],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    }
+  });
+
+  // =============================
+  // 2. Gráfico de Barras
+  // =============================
+  new Chart(document.getElementById('chartBar'), {
+    type: 'bar',
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          grid: { borderDash: [2, 4], color: '#e0e0e0' } 
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    },
+    data: {
+      labels: ['Sucesso', 'Erro'],
+      datasets: [{
+        label: 'Quantidade',
+        data: [success, error],
+        backgroundColor: [colorSuccess, colorError],
+        borderRadius: 4,
+        barThickness: 40
+      }]
+    }
+  });
+
+  // =============================
+  // 3. Gráfico de Linha
+  // =============================
+  const mockHistory = total > 0 
+    ? [Math.max(0, total - 3), Math.max(0, total - 2), Math.max(0, total - 1), total] 
+    : [0, 0, 0, 0];
+
+  new Chart(document.getElementById('chartLine'), {
+    type: 'line',
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      elements: {
+        line: { tension: 0.4, borderWidth: 2 },
+        point: { radius: 3, hoverRadius: 6 }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          grid: { borderDash: [2, 4], color: '#e0e0e0' } 
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    },
+    data: {
+      labels: ['3 dias atrás', '2 dias atrás', 'Ontem', 'Hoje'],
+      datasets: [{
+        label: 'Deploys',
+        data: mockHistory,
+        borderColor: colorInfo,
+        backgroundColor: 'rgba(13, 202, 240, 0.1)',
+        fill: true
+      }]
+    }
+  });
+
+})();
+</script>
+{% endblock %}

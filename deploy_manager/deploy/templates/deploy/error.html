@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+  <div class="col-md-6">
+    <div class="card shadow border-0">
+      <div class="card-header bg-danger text-white">
+        <i class="bi bi-exclamation-triangle-fill"></i> Erro Encontrado
+      </div>
+      <div class="card-body text-center">
+        <div class="mb-4">
+            <i class="bi bi-x-circle" style="font-size: 4rem; color: #dc3545;"></i>
+        </div>
+        
+        <h4 class="card-title text-danger">Ops! Algo deu errado.</h4>
+        
+        <!-- A mensagem de erro vem da view (variable: message) -->
+        <p class="card-text text-muted fs-5 mt-3">{{ message }}</p>
+        
+        <a href="javascript:history.back()" class="btn btn-outline-secondary mt-3">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
