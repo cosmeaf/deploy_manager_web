@@ -1,104 +1,102 @@
-========================
-PONTOS DE MELHORIA E EVOLUÇÃO DA PLATAFORMA
-========================
+## Pontos de Melhoria e Evolução da Plataforma
 
-A plataforma foi desenhada para ser simples, segura e operacional. No entanto, existem diversos pontos de evolução que podem elevar o Deploy Manager para nível enterprise / SaaS interno.
+Esta seção descreve recomendações estratégicas para evolução do Deploy Manager, com base em boas práticas de SRE, DevOps e plataformas de automação corporativas.
 
-As melhorias abaixo são recomendações estratégicas baseadas em boas práticas de SRE, DevOps e plataformas de automação.
+O objetivo é transformar a plataforma de uma ferramenta operacional para uma plataforma enterprise de automação, governança e observabilidade.
 
-------------------------------------------------
-1. SEGURANÇA AVANÇADA
-------------------------------------------------
+---
 
-Situação atual:
+### 1. Segurança Avançada
+
+**Situação atual:**
 - Execução via www-data + sudoers
-- Controle por path (/opt/deploy/*.sh)
+- Controle baseado em path (/opt/deploy/*.sh)
 
-Melhorias recomendadas:
-- Criar usuário dedicado (ex: deploy-runner)
-- Migrar execução para esse usuário
+**Melhorias recomendadas:**
+- Criar usuário dedicado (ex: `deploy-runner`)
+- Migrar execução de scripts para esse usuário
 - Usar sudoers apenas para esse usuário
-- Validar hash dos scripts antes da execução
-- Assinar scripts com checksum
+- Validar hash/checksum dos scripts antes da execução
+- Assinar scripts ou validar integridade
 - Bloquear execução de scripts alterados fora de controle
 
-Benefícios:
-- Redução de risco
+**Benefícios:**
+- Redução de risco operacional
 - Prevenção contra execução não autorizada
-- Compliance básico
+- Base para compliance e auditoria
 
 
-------------------------------------------------
-2. GOVERNANÇA DE DEPLOY
-------------------------------------------------
+---
 
-Situação atual:
-- Execução direta por qualquer usuário logado
+### 2. Governança de Deploy
 
-Melhorias recomendadas:
+**Situação atual:**
+- Qualquer usuário autenticado pode executar deploy
+
+**Melhorias recomendadas:**
 - Fluxo de aprovação (2-man rule)
 - Janela de deploy configurável
-- Locks de execução (evitar concorrência)
+- Locks de execução (evitar deploys concorrentes)
 - Separação por ambiente (prod, stage, dev)
-- Bloqueio automático em horário crítico
+- Bloqueio automático em horários críticos
 
-Benefícios:
+**Benefícios:**
 - Redução de incidentes
 - Padronização operacional
-- Processo mais maduro
+- Maturidade de processo
 
 
-------------------------------------------------
-3. RBAC (ROLE BASED ACCESS CONTROL)
-------------------------------------------------
+---
 
-Situação atual:
+### 3. RBAC (Role Based Access Control)
+
+**Situação atual:**
 - Login simples
-- Todos usuários têm mesmos poderes
+- Todos os usuários com mesmos privilégios
 
-Melhorias recomendadas:
-- Perfis: viewer, operator, admin
+**Melhorias recomendadas:**
+- Perfis: `viewer`, `operator`, `admin`
 - Permissão por script
 - Permissão por ambiente
 - Restrição de edição de secrets
 - Auditoria por perfil
 
-Benefícios:
-- Multi-usuário seguro
-- Possível uso por clientes
+**Benefícios:**
 - Controle fino de acesso
+- Multi-usuário seguro
+- Possibilidade de uso por clientes
 
 
-------------------------------------------------
-4. OBSERVABILIDADE E MÉTRICAS
-------------------------------------------------
+---
 
-Situação atual:
+### 4. Observabilidade e Métricas
+
+**Situação atual:**
 - Logs via stdout/stderr
 - Status simples (success/error)
 
-Melhorias recomendadas:
+**Melhorias recomendadas:**
 - Export de métricas Prometheus
-- Endpoint /metrics
+- Endpoint `/metrics`
 - Dashboard de SLA
 - Tempo médio de deploy
 - Taxa de falhas
 - Histórico de performance
 
-Benefícios:
-- Visibilidade real
-- Base para SRE
+**Benefícios:**
+- Visibilidade real da operação
+- Base para práticas SRE
 - Detecção proativa de problemas
 
 
-------------------------------------------------
-5. INTEGRAÇÃO COM GIT E CI/CD
-------------------------------------------------
+---
 
-Situação atual:
+### 5. Integração com Git e CI/CD
+
+**Situação atual:**
 - Execução manual de scripts
 
-Melhorias recomendadas:
+**Melhorias recomendadas:**
 - Integração com GitHub/GitLab
 - Webhooks de push
 - Deploy por commit
@@ -106,107 +104,111 @@ Melhorias recomendadas:
 - Rollback automatizado
 - Comparação de versões
 
-Benefícios:
-- Fluxo CI/CD
-- Menos erro humano
+**Benefícios:**
+- Fluxo CI/CD real
+- Redução de erro humano
 - Rastreabilidade completa
 
 
-------------------------------------------------
-6. AUDITORIA E COMPLIANCE
-------------------------------------------------
+---
 
-Situação atual:
-- Registro básico no banco
+### 6. Auditoria e Compliance
 
-Melhorias recomendadas:
+**Situação atual:**
+- Registro básico no banco de dados
+
+**Melhorias recomendadas:**
 - Log imutável de execuções
-- IP do usuário
+- Registro de IP do usuário
 - User-Agent
 - Hash do script executado
-- Tempo de execução
-- Resultado detalhado
+- Tempo de execução detalhado
+- Resultado completo
 
-Benefícios:
+**Benefícios:**
 - Auditoria real
 - Conformidade
-- Investigação de incidentes
+- Base para investigação de incidentes
 
 
-------------------------------------------------
-7. ESCALABILIDADE E MULTI-HOST
-------------------------------------------------
+---
 
-Situação atual:
+### 7. Escalabilidade e Multi-Host
+
+**Situação atual:**
 - Execução local no mesmo host
 
-Melhorias recomendadas:
+**Melhorias recomendadas:**
 - Agentes remotos
 - Execução distribuída
 - Controle central
 - Inventário de servidores
-- Execução por target
+- Execução por target/host
 
-Benefícios:
+**Benefícios:**
 - Plataforma centralizada
 - Escala para múltiplos servidores
 - Uso como NOC / MSP
 
 
-------------------------------------------------
-8. UX E PRODUTO
-------------------------------------------------
+---
 
-Situação atual:
-- Dashboard técnico
+### 8. UX e Produto
 
-Melhorias recomendadas:
+**Situação atual:**
+- Dashboard técnico focado em operação
+
+**Melhorias recomendadas:**
 - Timeline de deploys
 - Comparação entre versões
 - Filtros avançados
 - Histórico visual
 - Notificações (Slack, Email, Teams)
 
-Benefícios:
+**Benefícios:**
 - Experiência de produto
 - Melhor aceitação por clientes
-- Menos dependência de DevOps
+- Menor dependência de DevOps
 
 
-------------------------------------------------
-9. HARDENING E SEGURANÇA DE PRODUÇÃO
-------------------------------------------------
+---
 
-Melhorias recomendadas:
+### 9. Hardening e Segurança de Produção
+
+**Melhorias recomendadas:**
 - Rate limit no NGINX
 - IP allowlist
 - MFA no login
 - Timeout de sessão
 - Banner legal
-- Hardening do systemd (NoNewPrivileges, ProtectSystem, etc)
+- Hardening do systemd:
+  - NoNewPrivileges=true
+  - ProtectSystem=strict
+  - ProtectHome=true
+  - PrivateTmp=true
 
-Benefícios:
-- Redução de superfície de ataque
-- Padrão corporativo
+**Benefícios:**
+- Redução da superfície de ataque
+- Padrão corporativo de segurança
 
 
-------------------------------------------------
-10. POSICIONAMENTO DA PLATAFORMA
-------------------------------------------------
+---
+
+### 10. Posicionamento da Plataforma
 
 Com essas melhorias, a plataforma deixa de ser apenas:
 
-"Um painel que roda scripts"
+> "Um painel que roda scripts"
 
 E passa a ser:
 
-"Uma plataforma de automação, deploy e operação controlada"
+> "Uma plataforma de automação, deploy e operação controlada"
 
-Comparável (em escala menor) a:
+Comparável (em menor escala) a:
 - Rundeck
 - Jenkins
 - AWX / Ansible Tower
 - GitLab Deploy
 - Internal PaaS
 
-------------------------------------------------
+Isso posiciona o Deploy Manager como uma plataforma estratégica de operação e automação.
