@@ -1,214 +1,302 @@
-## Pontos de Melhoria e Evolução da Plataforma
+# 🚀 Deploy Manager Platform
 
-Esta seção descreve recomendações estratégicas para evolução do Deploy Manager, com base em boas práticas de SRE, DevOps e plataformas de automação corporativas.
+Deploy Manager é uma plataforma web interna baseada em Django para execução controlada de scripts de deploy, monitoramento de infraestrutura e gestão de segredos (secrets) em servidores Linux.
 
-O objetivo é transformar a plataforma de uma ferramenta operacional para uma plataforma enterprise de automação, governança e observabilidade.
-
----
-
-### 1. Segurança Avançada
-
-**Situação atual:**
-- Execução via www-data + sudoers
-- Controle baseado em path (/opt/deploy/*.sh)
-
-**Melhorias recomendadas:**
-- Criar usuário dedicado (ex: `deploy-runner`)
-- Migrar execução de scripts para esse usuário
-- Usar sudoers apenas para esse usuário
-- Validar hash/checksum dos scripts antes da execução
-- Assinar scripts ou validar integridade
-- Bloquear execução de scripts alterados fora de controle
-
-**Benefícios:**
-- Redução de risco operacional
-- Prevenção contra execução não autorizada
-- Base para compliance e auditoria
-
+A plataforma cria uma camada profissional entre o operador e o servidor, substituindo acessos manuais via SSH por uma interface web segura, auditável e controlada.
 
 ---
 
-### 2. Governança de Deploy
+## 🎯 Objetivos da Plataforma
 
-**Situação atual:**
-- Qualquer usuário autenticado pode executar deploy
-
-**Melhorias recomendadas:**
-- Fluxo de aprovação (2-man rule)
-- Janela de deploy configurável
-- Locks de execução (evitar deploys concorrentes)
-- Separação por ambiente (prod, stage, dev)
-- Bloqueio automático em horários críticos
-
-**Benefícios:**
-- Redução de incidentes
-- Padronização operacional
-- Maturidade de processo
-
+- Padronizar execuções de deploy
+- Reduzir acesso direto via SSH
+- Criar auditoria de operações
+- Centralizar execução de scripts
+- Monitorar saúde do servidor
+- Gerenciar secrets de forma controlada
 
 ---
 
-### 3. RBAC (Role Based Access Control)
+## 🧱 Arquitetura Geral
 
-**Situação atual:**
-- Login simples
-- Todos os usuários com mesmos privilégios
-
-**Melhorias recomendadas:**
-- Perfis: `viewer`, `operator`, `admin`
-- Permissão por script
-- Permissão por ambiente
-- Restrição de edição de secrets
-- Auditoria por perfil
-
-**Benefícios:**
-- Controle fino de acesso
-- Multi-usuário seguro
-- Possibilidade de uso por clientes
-
-
----
-
-### 4. Observabilidade e Métricas
-
-**Situação atual:**
-- Logs via stdout/stderr
-- Status simples (success/error)
-
-**Melhorias recomendadas:**
-- Export de métricas Prometheus
-- Endpoint `/metrics`
-- Dashboard de SLA
-- Tempo médio de deploy
-- Taxa de falhas
-- Histórico de performance
-
-**Benefícios:**
-- Visibilidade real da operação
-- Base para práticas SRE
-- Detecção proativa de problemas
-
+👤 Usuário (Browser)
+        |
+        v
+🌐 NGINX (HTTPS)
+        |
+        v
+🧩 Gunicorn (www-data)
+        |
+        v
+🐍 Django (Deploy Manager)
+        |
+        v
+🔐 sudo controlado
+        |
+        v
+📜 Scripts em /opt/deploy/*.sh
 
 ---
 
-### 5. Integração com Git e CI/CD
+## 🧩 Componentes
 
-**Situação atual:**
-- Execução manual de scripts
-
-**Melhorias recomendadas:**
-- Integração com GitHub/GitLab
-- Webhooks de push
-- Deploy por commit
-- Registro de versão implantada
-- Rollback automatizado
-- Comparação de versões
-
-**Benefícios:**
-- Fluxo CI/CD real
-- Redução de erro humano
-- Rastreabilidade completa
-
+- 🐍 Django (backend + frontend)
+- 🧩 Gunicorn (WSGI server)
+- 🌐 NGINX (reverse proxy + SSL)
+- ⚙️ systemd (gerenciamento do serviço)
+- 🔐 sudoers (execução controlada)
+- 📊 psutil (métricas de servidor)
 
 ---
 
-### 6. Auditoria e Compliance
+## 📁 Estrutura de Diretórios
 
-**Situação atual:**
-- Registro básico no banco de dados
+### Aplicação
 
-**Melhorias recomendadas:**
-- Log imutável de execuções
-- Registro de IP do usuário
-- User-Agent
-- Hash do script executado
-- Tempo de execução detalhado
-- Resultado completo
+/opt/deploy_manager/
+  ├── core/                  
+  ├── deploy/                
+  ├── venv/                  
+  ├── manage.py
 
-**Benefícios:**
-- Auditoria real
-- Conformidade
-- Base para investigação de incidentes
+### Scripts de Deploy
 
+/opt/deploy/
+  ├── deploy_eduflow.sh
+  ├── deploy_ptecia.sh
+  ├── deploy_certificados.sh
+  └── ...
 
----
+Função:
+- Scripts reais de deploy
+- Executados como root via sudo controlado
+- Chamados pela plataforma web
 
-### 7. Escalabilidade e Multi-Host
+### Secrets / Variáveis de Ambiente
 
-**Situação atual:**
-- Execução local no mesmo host
+/opt/secret/
+  ├── eduflow.env
+  ├── ptecia.env
+  ├── certificados.env
+  └── ...
 
-**Melhorias recomendadas:**
-- Agentes remotos
-- Execução distribuída
-- Controle central
-- Inventário de servidores
-- Execução por target/host
-
-**Benefícios:**
-- Plataforma centralizada
-- Escala para múltiplos servidores
-- Uso como NOC / MSP
-
-
----
-
-### 8. UX e Produto
-
-**Situação atual:**
-- Dashboard técnico focado em operação
-
-**Melhorias recomendadas:**
-- Timeline de deploys
-- Comparação entre versões
-- Filtros avançados
-- Histórico visual
-- Notificações (Slack, Email, Teams)
-
-**Benefícios:**
-- Experiência de produto
-- Melhor aceitação por clientes
-- Menor dependência de DevOps
-
+Função:
+- Tokens
+- Senhas
+- Variáveis de ambiente
+- Configurações sensíveis
+- Editáveis pela interface web
 
 ---
 
-### 9. Hardening e Segurança de Produção
+## 🔐 Segurança e Privilégios
 
-**Melhorias recomendadas:**
-- Rate limit no NGINX
-- IP allowlist
-- MFA no login
-- Timeout de sessão
-- Banner legal
-- Hardening do systemd:
-  - NoNewPrivileges=true
-  - ProtectSystem=strict
-  - ProtectHome=true
-  - PrivateTmp=true
+A aplicação NÃO roda como root.
 
-**Benefícios:**
-- Redução da superfície de ataque
-- Padrão corporativo de segurança
+Gunicorn roda como:
 
+User: www-data  
+Group: www-data
+
+Execução privilegiada é feita via sudoers controlado.
 
 ---
 
-### 10. Posicionamento da Plataforma
+## 🛡️ Sudoers (Execução Controlada)
 
-Com essas melhorias, a plataforma deixa de ser apenas:
+Arquivo:
 
-> "Um painel que roda scripts"
+/etc/sudoers.d/deploy-manager
 
-E passa a ser:
+Conteúdo:
 
-> "Uma plataforma de automação, deploy e operação controlada"
+www-data ALL=(root) NOPASSWD: /opt/deploy/*.sh  
+www-data ALL=(root) NOPASSWD: /usr/bin/ping
 
-Comparável (em menor escala) a:
-- Rundeck
-- Jenkins
-- AWX / Ansible Tower
-- GitLab Deploy
-- Internal PaaS
+Permite:
+- Executar SOMENTE scripts em /opt/deploy
+- Executar ping para healthcheck
+- Nada além disso
 
-Isso posiciona o Deploy Manager como uma plataforma estratégica de operação e automação.
+---
+
+## 🔑 Permissões de Diretórios
+
+### Scripts
+
+chown root:root /opt/deploy/*.sh  
+chmod 750 /opt/deploy/*.sh
+
+### Secrets (grupo dedicado)
+
+groupadd ops  
+usermod -aG ops www-data  
+
+chown -R root:ops /opt/secret  
+chmod -R 770 /opt/secret
+
+---
+
+## 🔄 Fluxo de Execução de Scripts
+
+1. Usuário clica em "Executar"
+2. Django chama subprocess com sudo
+3. Script é executado como root
+4. STDOUT/STDERR enviados em tempo real (SSE)
+5. Logs salvos no banco
+6. Status atualizado (success/error/timeout)
+
+Execução:
+
+/usr/bin/sudo /opt/deploy/SEU_SCRIPT.sh
+
+---
+
+## 📊 Health & Métricas
+
+- CPU (%)
+- Memória (%)
+- Disco (%)
+- Ping externo (latência)
+
+---
+
+## ⚙️ systemd (Serviço)
+
+Arquivo:
+
+/etc/systemd/system/deploy-manager.service
+
+Exemplo:
+
+[Unit]
+Description=Deploy Manager Django App
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/deploy_manager
+Environment="PATH=/opt/deploy_manager/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+ExecStart=/opt/deploy_manager/venv/bin/gunicorn \
+  --workers 3 \
+  --bind 127.0.0.1:8050 \
+  core.wsgi:application
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+---
+
+## 🌐 NGINX
+
+Arquivo:
+
+/etc/nginx/sites-available/deploy-manager.conf
+
+server {
+    listen 80;
+    server_name deploy-manager.pdinfinita.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name deploy-manager.pdinfinita.com;
+
+    ssl_certificate /etc/letsencrypt/live/pdinfinita.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/pdinfinita.com/privkey.pem;
+
+    location /static/ {
+        alias /var/www/deploy-manager/static/;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8050;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+---
+
+## 🧠 Django Settings Importantes
+
+DEBUG = False
+
+ALLOWED_HOSTS = deploy-manager.pdinfinita.com
+
+STATIC_ROOT = /var/www/deploy-manager/static/
+
+LOGIN_URL = /accounts/login/  
+LOGIN_REDIRECT_URL = /  
+LOGOUT_REDIRECT_URL = /accounts/login/
+
+---
+
+## 📦 Static Files
+
+python manage.py collectstatic  
+chown -R www-data:www-data /var/www/deploy-manager
+
+---
+
+## 🪵 Logs & Troubleshooting
+
+journalctl -u deploy-manager -f  
+tail -f /var/log/nginx/deploy-manager.error.log
+
+---
+
+## ❌ Erros Comuns
+
+sudo: No such file or directory  
+→ Use /usr/bin/sudo no código e no PATH do systemd
+
+Permission denied em /opt/secret  
+→ Grupo ops + chmod 770
+
+Script não executa  
+→ Teste: sudo -u www-data /usr/bin/sudo /opt/deploy/SEU_SCRIPT.sh
+
+---
+
+## 🧭 Pontos de Melhoria e Evolução da Plataforma
+
+Segurança Avançada  
+Governança de Deploy  
+RBAC (viewer/operator/admin)  
+Observabilidade (Prometheus, SLA)  
+Integração CI/CD  
+Auditoria e Compliance  
+Multi-Host  
+UX e Produto  
+Hardening  
+Posicionamento como plataforma corporativa
+
+---
+
+## ⚠️ Aviso de Segurança
+
+Esta plataforma executa scripts como root via sudo controlado.  
+Use apenas em ambientes internos e controlados.
+
+Audite regularmente:
+- sudoers
+- permissões
+- usuários
+- scripts
+
+---
+
+## 🏢 Autor / Plataforma
+
+Deploy Manager Platform  
+Infra & DevOps Automation  
+PD Infinita
