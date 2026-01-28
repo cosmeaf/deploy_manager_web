@@ -6,7 +6,7 @@ A plataforma cria uma camada profissional entre o operador e o servidor, substit
 
 ---
 
-## 🎯 Objetivos da Plataforma
+## 🎯 Objetivos
 
 - Padronizar execuções de deploy
 - Reduzir acesso direto via SSH
@@ -17,92 +17,64 @@ A plataforma cria uma camada profissional entre o operador e o servidor, substit
 
 ---
 
-## 🧱 Arquitetura Geral
+## 🧱 Arquitetura
 
-👤 Usuário (Browser)
-        |
-        v
-🌐 NGINX (HTTPS)
-        |
-        v
-🧩 Gunicorn (www-data)
-        |
-        v
-🐍 Django (Deploy Manager)
-        |
-        v
-🔐 sudo controlado
-        |
-        v
-📜 Scripts em /opt/deploy/*.sh
+Usuário (Browser)
+  -> NGINX (HTTPS)
+    -> Gunicorn (www-data)
+      -> Django (Deploy Manager)
+        -> sudo controlado
+          -> Scripts em /opt/deploy
 
 ---
 
 ## 🧩 Componentes
 
-- 🐍 Django (backend + frontend)
-- 🧩 Gunicorn (WSGI server)
-- 🌐 NGINX (reverse proxy + SSL)
-- ⚙️ systemd (gerenciamento do serviço)
-- 🔐 sudoers (execução controlada)
-- 📊 psutil (métricas de servidor)
+- Django (backend + frontend)
+- Gunicorn (WSGI)
+- NGINX (reverse proxy + SSL)
+- systemd (serviço)
+- sudoers (execução controlada)
+- psutil (métricas)
 
 ---
 
 ## 📁 Estrutura de Diretórios
 
-### Aplicação
+Aplicação:
 
 /opt/deploy_manager/
-  ├── core/                  
-  ├── deploy/                
-  ├── venv/                  
-  ├── manage.py
+  core/
+  deploy/
+  venv/
+  manage.py
 
-### Scripts de Deploy
+Scripts de deploy:
 
 /opt/deploy/
-  ├── deploy_eduflow.sh
-  ├── deploy_ptecia.sh
-  ├── deploy_certificados.sh
-  └── ...
+  deploy_eduflow.sh
+  deploy_ptecia.sh
+  deploy_certificados.sh
 
-Função:
-- Scripts reais de deploy
-- Executados como root via sudo controlado
-- Chamados pela plataforma web
-
-### Secrets / Variáveis de Ambiente
+Secrets:
 
 /opt/secret/
-  ├── eduflow.env
-  ├── ptecia.env
-  ├── certificados.env
-  └── ...
-
-Função:
-- Tokens
-- Senhas
-- Variáveis de ambiente
-- Configurações sensíveis
-- Editáveis pela interface web
+  eduflow.env
+  ptecia.env
+  certificados.env
 
 ---
 
-## 🔐 Segurança e Privilégios
+## 🔐 Modelo de Segurança
 
-A aplicação NÃO roda como root.
-
-Gunicorn roda como:
-
-User: www-data  
-Group: www-data
-
-Execução privilegiada é feita via sudoers controlado.
+- Gunicorn NÃO roda como root
+- Usuário: www-data
+- Elevação de privilégio via sudoers
+- Execução restrita por path
 
 ---
 
-## 🛡️ Sudoers (Execução Controlada)
+## 🛡️ Sudoers
 
 Arquivo:
 
@@ -110,49 +82,44 @@ Arquivo:
 
 Conteúdo:
 
-www-data ALL=(root) NOPASSWD: /opt/deploy/*.sh  
+www-data ALL=(root) NOPASSWD: /opt/deploy/*.sh
 www-data ALL=(root) NOPASSWD: /usr/bin/ping
-
-Permite:
-- Executar SOMENTE scripts em /opt/deploy
-- Executar ping para healthcheck
-- Nada além disso
 
 ---
 
-## 🔑 Permissões de Diretórios
+## 🔑 Permissões
 
-### Scripts
+Scripts:
 
-chown root:root /opt/deploy/*.sh  
+chown root:root /opt/deploy/*.sh
 chmod 750 /opt/deploy/*.sh
 
-### Secrets (grupo dedicado)
+Secrets:
 
-groupadd ops  
-usermod -aG ops www-data  
+groupadd ops
+usermod -aG ops www-data
 
-chown -R root:ops /opt/secret  
+chown -R root:ops /opt/secret
 chmod -R 770 /opt/secret
 
 ---
 
-## 🔄 Fluxo de Execução de Scripts
+## 🔄 Fluxo de Execução
 
-1. Usuário clica em "Executar"
+1. Usuário clica Executar
 2. Django chama subprocess com sudo
-3. Script é executado como root
-4. STDOUT/STDERR enviados em tempo real (SSE)
+3. Script roda como root
+4. Output em tempo real (SSE)
 5. Logs salvos no banco
-6. Status atualizado (success/error/timeout)
+6. Status atualizado
 
-Execução:
+Execução real:
 
 /usr/bin/sudo /opt/deploy/SEU_SCRIPT.sh
 
 ---
 
-## 📊 Health & Métricas
+## 📊 Health Check
 
 - CPU (%)
 - Memória (%)
@@ -161,7 +128,7 @@ Execução:
 
 ---
 
-## ⚙️ systemd (Serviço)
+## ⚙️ systemd
 
 Arquivo:
 
@@ -185,7 +152,6 @@ ExecStart=/opt/deploy_manager/venv/bin/gunicorn \
   core.wsgi:application
 
 Restart=always
-RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -226,65 +192,67 @@ server {
 
 ---
 
-## 🧠 Django Settings Importantes
+## 🧠 Django Settings
 
 DEBUG = False
 
-ALLOWED_HOSTS = deploy-manager.pdinfinita.com
+ALLOWED_HOSTS =
+- deploy-manager.pdinfinita.com
 
 STATIC_ROOT = /var/www/deploy-manager/static/
 
-LOGIN_URL = /accounts/login/  
-LOGIN_REDIRECT_URL = /  
+LOGIN_URL = /accounts/login/
+LOGIN_REDIRECT_URL = /
 LOGOUT_REDIRECT_URL = /accounts/login/
 
 ---
 
 ## 📦 Static Files
 
-python manage.py collectstatic  
+python manage.py collectstatic
 chown -R www-data:www-data /var/www/deploy-manager
 
 ---
 
-## 🪵 Logs & Troubleshooting
+## 🪵 Logs
 
-journalctl -u deploy-manager -f  
+journalctl -u deploy-manager -f
 tail -f /var/log/nginx/deploy-manager.error.log
 
 ---
 
-## ❌ Erros Comuns
+## ❌ Problemas Comuns
 
-sudo: No such file or directory  
-→ Use /usr/bin/sudo no código e no PATH do systemd
+sudo not found
+→ Use /usr/bin/sudo no código e no systemd PATH
 
-Permission denied em /opt/secret  
-→ Grupo ops + chmod 770
+Permission denied em /opt/secret
+→ Corrigir grupo ops e chmod
 
-Script não executa  
-→ Teste: sudo -u www-data /usr/bin/sudo /opt/deploy/SEU_SCRIPT.sh
-
----
-
-## 🧭 Pontos de Melhoria e Evolução da Plataforma
-
-Segurança Avançada  
-Governança de Deploy  
-RBAC (viewer/operator/admin)  
-Observabilidade (Prometheus, SLA)  
-Integração CI/CD  
-Auditoria e Compliance  
-Multi-Host  
-UX e Produto  
-Hardening  
-Posicionamento como plataforma corporativa
+Script não executa
+→ Testar:
+sudo -u www-data /usr/bin/sudo /opt/deploy/SEU_SCRIPT.sh
 
 ---
 
-## ⚠️ Aviso de Segurança
+## 🧭 Evolução da Plataforma
 
-Esta plataforma executa scripts como root via sudo controlado.  
+- Usuário dedicado (deploy-runner)
+- Aprovação de deploy
+- Ambientes (prod/stage/dev)
+- RBAC (viewer/operator/admin)
+- Prometheus /metrics
+- Webhooks GitHub/GitLab
+- Auditoria imutável
+- Multi-host (agentes)
+- Hardening systemd
+- MFA no login
+
+---
+
+## ⚠️ Aviso
+
+Esta plataforma executa scripts como root via sudo controlado.
 Use apenas em ambientes internos e controlados.
 
 Audite regularmente:
@@ -295,8 +263,10 @@ Audite regularmente:
 
 ---
 
-## 🏢 Autor / Plataforma
+## 🏢 Autor
 
-Deploy Manager Platform  
-Infra & DevOps Automation  
+Deploy Manager Platform
+Infra & DevOps Automation
+Cosme Alves
+cosme.alex@gmail.com
 PD Infinita
